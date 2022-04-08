@@ -12,9 +12,10 @@ class Admin:
     admin_heading = ""
 
     def __init__(self):
-        self.movies_data = None
         self.movies_dict = {}
         self.movies_header = []
+        self.movies_data = ExcelHelper(get_from_config(self.__EXL_SECTION, "movies_sheet"))
+        self.movies_header = self.movies_data.get_headers_from_exl()
         print("******Welcome to BookMyShow Admin*******")
         print(get_from_config(self.__SECTION, "admin_login_options"))
         ch = int(input(get_from_config(self.__COM_SECTION, "enter_option")))
@@ -41,9 +42,7 @@ class Admin:
             ch = int(input(get_from_config(self.__COM_SECTION, "enter_option")))
             if ch == 1:
                 print("******Add movie******")
-                self.movies_data = ExcelHelper(get_from_config(self.__EXL_SECTION, "movies_sheet"))
-                movies_header = self.movies_data.get_headers_from_exl()
-                for header in movies_header:
+                for header in self.movies_header:
                     if header == "Timings":
                         timing_str = ""
                         for elem in self.cal_movie_timing():
@@ -53,19 +52,33 @@ class Admin:
                         continue
                     self.movies_dict[header] = input(header + ": ")
                 print(self.movies_dict)
+                self.movies_data.insert_data_into_excel(list(self.movies_dict.items()))
 
             elif ch == 2:
-                self.movies_data.get_data_from_exl()
                 print("Edit movie details")
+                count = 1
+                movie_list = list(self.movies_data.get_data_from_exl())
+                for movie in movie_list:
+                    print(f"{count}. {movie[0]}")
+                    count += 1
+                movie_to_edit = movie_list[int(input("Enter the movie title to edit: "))-1][0]
+                field_to_edit = input("Enter the field to edit: ")
+                updated_value = input("Enter value to update: ")
+                self.movies_data.edit_movie_from_excel(movie_to_edit, field_to_edit, updated_value)
             elif ch == 3:
                 movie_to_delete = input("Enter the movie title to delete: ")
+                if self.movies_data.del_movie_from_excel(movie_to_delete):
+                    print("Movie deleted successfully")
+                else:
+                    print("Movie doesn't exist")
             elif ch == 4:
                 print("Logging out...")
+                self.movies_data.close_app()
                 sleep(3)
                 flag = False
 
     def get_hr_and_min(self, given_time):
-        given_time = given_time.spli(" ")
+        given_time = given_time.split(" ")
         cal_hr,cal_min = int(re.findall(r'\d+', given_time[0])[0]), int(re.findall(r'\d+', given_time[1])[0])
 
         return cal_hr, cal_min
@@ -98,3 +111,5 @@ class Admin:
             start_hr = end_hr + movie_gap_hr + next_min_to_hr
             start_min = next_remaining_min
 
+admin = Admin()
+admin.admin_page()
